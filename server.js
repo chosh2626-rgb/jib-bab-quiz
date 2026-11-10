@@ -1,4 +1,4 @@
-// 전도회 성경 퀴즈 대회 서버: 화면(index.html)을 내보내고, 진행자와 휴대폰 사이의 메시지를 중계한다.
+// 전도회별 집밥프로젝트 서버: 화면(index.html)을 내보내고, 진행자와 휴대폰 사이의 메시지를 중계한다.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');

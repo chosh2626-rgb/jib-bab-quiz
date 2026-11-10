@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>전도회 성경 퀴즈 대회</title>
+<title>전도회별 집밥프로젝트</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -196,7 +196,7 @@ dialog.qrd{width:min(94vw,86vh);text-align:center}
 
 <div id="host" class="hide">
   <div class="top">
-    <h1>전도회 성경 퀴즈 대회</h1>
+    <h1>전도회별 집밥프로젝트</h1>
     <span class="pill"><span class="dot" id="hdot"></span><span id="hconn">연결 중…</span></span>
     <span class="pill" id="honline">접속 0 / 22</span>
     <button class="pill qrbtn" id="bQr">QR 코드 보기</button>
@@ -663,7 +663,7 @@ function startPlayer(room,b){
   const myPts=()=>Object.values(mine).filter(x=>x.ok).length*PTS;
   function head(){
     const t=TEAM[team];
-    $("#phead").innerHTML=(t?`<span class="me ${t.g}">${esc(t.name)}${name?" · "+esc(name):""}</span><button class="chg" id="pchg">바꾸기</button>`:`<span class="me">성경 퀴즈 대회</span>`)+`<span class="st"><span class="dot ${online?"on":""}"></span>${online?"연결됨":"연결 중"}</span>`;
+    $("#phead").innerHTML=(t?`<span class="me ${t.g}">${esc(t.name)}${name?" · "+esc(name):""}</span><button class="chg" id="pchg">바꾸기</button>`:`<span class="me">전도회별 집밥프로젝트</span>`)+`<span class="st"><span class="dot ${online?"on":""}"></span>${online?"연결됨":"연결 중"}</span>`;
     const c=$("#pchg");if(c)c.onclick=()=>{team=null;name=null;LS.set("bq_team_"+room,null);render(true)};
   }
   function myRank(){if(!S||!S.sc)return null;return ranked(TEAM[team].g,S.sc).find(t=>t.id===team)}
