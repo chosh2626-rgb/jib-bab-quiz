@@ -91,10 +91,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .fast .who{font-family:var(--disp);font-size:clamp(2rem,4.6vw,5rem);line-height:1.15}
 .fast .how{font-weight:700;font-size:clamp(1rem,1.6vw,1.7rem)}
 .reslist{margin-top:1.6vh;background:var(--card);border-radius:22px;padding:1.4vh 1.2vw;overflow:auto;flex:1;min-height:0}
-.res{display:grid;grid-template-columns:2em 1fr auto auto;gap:.8em;align-items:center;padding:.38em .5em;border-radius:10px;font-size:clamp(.9rem,1.35vw,1.45rem)}
+.res{display:grid;grid-template-columns:2em 1fr auto 4.2em;gap:.8em;align-items:center;padding:.38em .5em;border-radius:10px;font-size:clamp(.9rem,1.35vw,1.45rem)}
 .res:nth-child(odd){background:#F7F5FF}
 .res .n{font-family:var(--disp);color:var(--mute);text-align:center}
 .res .nm{font-family:var(--disp)} .res .nm.m{color:var(--men)} .res .nm.w{color:var(--women)}
+.chip small{display:block;font-family:var(--body);font-size:.6em;font-weight:700}
+.row .nm small{font-family:var(--body);font-size:.6em;color:var(--mute);margin-left:.5em}
 .res .nm small{font-family:var(--body);color:var(--mute);font-size:.75em;margin-left:.5em}
 .res .tm{font-variant-numeric:tabular-nums;color:var(--mute)}
 .res .pt{font-weight:900;font-variant-numeric:tabular-nums;color:var(--ok);min-width:3.6em;text-align:right}
@@ -2593,11 +2595,14 @@ const norm=s=>String(s??"").toLowerCase().replace(/[\s.,!?·'"‘’“”()\-]/
 const sec=ms=>(ms/1000).toFixed(2)+"초";
 function answerText(q){return q.type==="choice"?q.choices[q.answer]:q.type==="ox"?q.answer:q.answers[0]}
 function shownAnswer(q,a){return q.type==="choice"?(q.choices[a]??""):String(a??"")}
-function ranked(g,scores){ // 같은 점수는 같은 등수
-  const arr=TEAMS.filter(t=>t.g===g).map(t=>({...t,score:scores[t.id]||0})).sort((a,b)=>b.score-a.score);
-  arr.forEach((t,i)=>{t.rank=i>0&&arr[i-1].score===t.score?arr[i-1].rank:i+1});
+function ranked(g,sc){ // 평균 점수 순, 같은 점수는 같은 등수, 참여자가 없으면 순위 없음
+  const arr=TEAMS.filter(t=>t.g===g).map(t=>{const x=sc&&sc[t.id];return {...t,n:x?x.n:0,score:x&&x.n?x.avg:-1}}).sort((a,b)=>b.score-a.score);
+  arr.forEach((t,i)=>{t.rank=t.n?(i>0&&arr[i-1].score===t.score?arr[i-1].rank:i+1):null});
   return arr;
 }
+const PTS=10; // 정답 1개당 점수
+const f1=v=>(Math.round(v*10)/10).toFixed(1);
+function grade(type,key,a){return type==="short"?key.some(x=>norm(x)===norm(a)&&norm(a)!==""):a===key}
 function connect(url,id){return mqtt.connect(url,{clientId:id,clean:true,reconnectPeriod:2000,connectTimeout:7000,keepalive:20})}
 const hp=new URLSearchParams(location.hash.slice(1));
 if(hp.get("r")) startPlayer(hp.get("r").toUpperCase(),+hp.get("b")||0); else startHost();
@@ -2606,13 +2611,19 @@ if(hp.get("r")) startPlayer(hp.get("r").toUpperCase(),+hp.get("b")||0); else sta
 function startHost(){
   $("#host").classList.remove("hide");
   let Q=LS.get("bq_questions",null)||JSON.parse(JSON.stringify(SAMPLE));
-  let G=LS.get("bq_game",null)||fresh();
+  let G=LS.get("bq_game",null);if(!G||!G.members)G=fresh();
   let tab="home", client=null, online=false, devices={}, lastOnlineKey="", resetArmed=0, editing=-1;
-  function fresh(){return {room:rid(5),b:-1,phase:"lobby",qi:-1,qid:0,startAt:0,dur:20,cur:null,answers:{},scores:{}}}
+  function fresh(){return {room:rid(5),b:-1,phase:"lobby",qi:-1,qid:0,startAt:0,dur:20,cur:null,answers:{},members:{},done:0}}
   const save=()=>LS.set("bq_game",G);
   const saveQ=()=>LS.set("bq_questions",Q);
   const pre=()=>"bq26/"+G.room;
-  const onlineTeams=()=>{const now=Date.now(),s=new Set();for(const c in devices)if(now-devices[c].t<20000)s.add(devices[c].team);return s};
+  const onlinePids=()=>{const now=Date.now();return Object.keys(devices).filter(c=>now-devices[c].t<30000)};
+  const onlineTeams=()=>{const m=new Map();for(const c of onlinePids())m.set(devices[c].team,(m.get(devices[c].team)||0)+1);return m};
+  function teamScores(){ // 전도회별 평균 = 참여자(한 번이라도 제출한 사람) 점수 합 ÷ 참여자 수
+    const o={};for(const id in G.members){const m=G.members[id];if(!m.cnt)continue;const x=o[m.team]||(o[m.team]={sum:0,n:0});x.sum+=m.pts;x.n++}
+    for(const t in o)o[t]={n:o[t].n,avg:Math.round(o[t].sum/o[t].n*100)/100};return o;
+  }
+  let pend=0;const schedule=()=>{if(pend)return;pend=setTimeout(()=>{pend=0;save();publish();if(tab==="play")render()},250)};
   const joinUrl=()=>location.origin+location.pathname+location.search+"#r="+G.room+"&b="+G.b;
 
   /* 연결: 공개 중계 서버를 차례로 시도 */
@@ -2638,41 +2649,44 @@ function startHost(){
     client.on("connect",()=>{online=true;conn();client.subscribe([pre()+"/hi",pre()+"/ans"],{qos:1});publish();render()});
     client.on("close",()=>{online=false;conn()});
     client.on("message",(topic,buf)=>{let m;try{m=JSON.parse(buf.toString())}catch(e){return}
-      if(!m||!TEAM[m.team]||typeof m.cid!=="string")return;
-      devices[m.cid.slice(0,20)]={team:m.team,t:Date.now()};
-      if(topic.endsWith("/ans"))onAnswer(m);
+      if(!m||!TEAM[m.team]||typeof m.pid!=="string"||!m.pid)return;
+      const pid=m.pid.slice(0,16),name=String(m.name??"").trim().slice(0,12)||"이름없음";
+      devices[pid]={team:m.team,name,t:Date.now()};
+      if(topic.endsWith("/ans"))onAnswer(m,pid,name);
       checkOnline();
     });
   });
   function conn(){$("#hdot").classList.toggle("on",online);$("#hconn").textContent=online?"연결됨":"연결 중…"}
-  function checkOnline(){const s=onlineTeams(),k=[...s].sort().join();$("#honline").textContent="접속 "+s.size+" / "+TEAMS.length;
+  function checkOnline(){const n=onlinePids().length,k=[...onlineTeams()].map(x=>x.join(":")).sort().join();$("#honline").textContent="접속 "+n+"명";
     if(k!==lastOnlineKey){lastOnlineKey=k;if(tab==="play"&&(G.phase==="lobby"||G.phase==="question"))render()}}
 
   function publish(){
     if(!client||!online)return;
-    const s={ph:G.phase,qid:G.qid,n:G.qi+1,total:Q.length,sub:Object.keys(G.answers)};
+    const s={ph:G.phase,qid:G.qid,n:G.qi+1,total:Q.length};
     if(G.cur&&(G.phase==="question"||G.phase==="reveal")){
       s.q={t:G.cur.type,x:G.cur.text,c:G.cur.choices||null};s.dur=G.dur;s.age=Date.now()-G.startAt;
     }
     if(G.phase!=="lobby"&&G.phase!=="question"){
-      s.sc=G.scores;
-      if(G.cur){s.ans=answerText(G.cur);s.res={};for(const t in G.answers){const a=G.answers[t];s.res[t]={ok:a.ok,pts:a.pts,e:a.e}}}
+      s.sc=teamScores();
+      if(G.cur){s.ans=answerText(G.cur);s.key={t:G.cur.type,a:G.cur.type==="short"?G.cur.answers:G.cur.answer}}
     }
     client.publish(pre()+"/state",JSON.stringify(s),{qos:0,retain:true});
   }
-  function check(q,a){return q.type==="choice"?a===q.answer:q.type==="ox"?a===q.answer:q.answers.some(x=>norm(x)===norm(a)&&norm(a)!=="")}
-  function onAnswer(m){
-    if(G.phase!=="question"||m.q!==G.qid||G.answers[m.team])return;
+  const ack=pid=>client.publish(pre()+"/ack/"+pid,JSON.stringify({q:G.qid}),{qos:1});
+  function onAnswer(m,pid,name){
+    if(m.q!==G.qid)return;
+    if(G.answers[pid])return ack(pid); // 다시 보낸 답: 받았다고만 알려 줌
+    if(G.phase!=="question")return;
     const arrival=Date.now()-G.startAt;
     let e=(typeof m.e==="number"&&m.e>0&&m.e<=arrival+250)?m.e:arrival;
     if(e>G.dur*1000+GRACE)return;
     e=Math.min(e,G.dur*1000);
     const a=G.cur.type==="choice"?(Number.isInteger(m.a)?m.a:-1):String(m.a??"").slice(0,40);
-    const ok=check(G.cur,a);
-    G.answers[m.team]={a,e:Math.round(e),ok,pts:ok?500+Math.round(500*(1-e/(G.dur*1000))):0};
-    save();publish();if(tab==="play")render();
-    const on=onlineTeams();
-    if(on.size>0&&[...on].every(t=>G.answers[t]))setTimeout(()=>{if(G.phase==="question")closeQ()},700);
+    const ok=grade(G.cur.type,G.cur.type==="short"?G.cur.answers:G.cur.answer,a);
+    G.answers[pid]={a,e:Math.round(e),ok,team:m.team,name};
+    ack(pid);schedule();
+    const on=onlinePids();
+    if(on.length>1&&on.every(c=>G.answers[c]))setTimeout(()=>{if(G.phase==="question")closeQ()},700);
   }
   function startQ(i){
     if(i>=Q.length)return;
@@ -2681,8 +2695,9 @@ function startHost(){
   }
   function closeQ(){
     if(G.phase!=="question")return;
-    for(const t in G.answers)G.scores[t]=(G.scores[t]||0)+G.answers[t].pts;
-    G.phase="reveal";save();publish();render();
+    for(const pid in G.answers){const a=G.answers[pid],m=G.members[pid]||(G.members[pid]={pts:0,cnt:0});
+      m.team=a.team;m.name=a.name;m.cnt++;if(a.ok)m.pts+=PTS}
+    G.done=(G.done||0)+1;G.phase="reveal";save();publish();render();
   }
   function go(phase){G.phase=phase;save();publish();render()}
   function resetAll(){const b=G.b;G=fresh();G.b=b;devices={};save();location.reload()}
@@ -2701,8 +2716,8 @@ function startHost(){
 
   /* 화면 그리기 */
   function subsHtml(){
-    const list=Object.entries(G.answers).sort((a,b)=>a[1].e-b[1].e);
-    return `<div class="subs"><b>제출 ${list.length} / 접속 ${onlineTeams().size}</b>`+list.map(([t,a])=>`<span class="sub ${TEAM[t].g}">${esc(TEAM[t].name)}<small>${sec(a.e)}</small></span>`).join("")+`</div>`;
+    const list=Object.values(G.answers).sort((a,b)=>a.e-b.e);
+    return `<div class="subs"><b>제출 ${list.length}명 / 접속 ${onlinePids().length}명</b>`+list.slice(0,12).map(a=>`<span class="sub ${TEAM[a.team].g}">${esc(a.name)}<small>${esc(TEAM[a.team].name)}</small></span>`).join("")+(list.length>12?`<b>외 ${list.length-12}명</b>`:"")+`</div>`;
   }
   function optsHtml(q,reveal){
     if(q.type==="short")return reveal?`<div class="answer-big">정답 · ${esc(answerText(q))}</div>`:`<div class="shortnote">휴대폰에 답을 직접 입력해 주세요</div>`;
@@ -2710,18 +2725,18 @@ function startHost(){
     return `<div class="opts">`+items.map((c,i)=>{
       const val=q.type==="ox"?c:i, right=val===q.answer;
       const cnt=reveal?Object.values(G.answers).filter(a=>a.a===val).length:null;
-      return `<div class="opt c${q.type==="ox"?(i?0:1):i} ${reveal?(right?"right":"dim"):""}"><span class="sh">${q.type==="ox"?"":SHAPES[i]}</span><span>${esc(c)}</span>${reveal?`<span class="cnt">${cnt}곳</span>`:""}</div>`;
+      return `<div class="opt c${q.type==="ox"?(i?0:1):i} ${reveal?(right?"right":"dim"):""}"><span class="sh">${q.type==="ox"?"":SHAPES[i]}</span><span>${esc(c)}</span>${reveal?`<span class="cnt">${cnt}명</span>`:""}</div>`;
     }).join("")+`</div>`;
   }
   function groupChips(g){
-    const on=onlineTeams();
-    return `<div class="grp ${g}"><h3>${GNAME[g]} <small>${TEAMS.filter(t=>t.g===g&&on.has(t.id)).length} / ${TEAMS.filter(t=>t.g===g).length} 접속</small></h3><div class="chips">`+
-      TEAMS.filter(t=>t.g===g).map(t=>`<div class="chip ${on.has(t.id)?"on":""}">${esc(t.name)}</div>`).join("")+`</div></div>`;
+    const on=onlineTeams(),ts=TEAMS.filter(t=>t.g===g);
+    return `<div class="grp ${g}"><h3>${GNAME[g]} <small>${ts.reduce((n,t)=>n+(on.get(t.id)||0),0)}명 접속</small></h3><div class="chips">`+
+      ts.map(t=>`<div class="chip ${on.has(t.id)?"on":""}">${esc(t.name)}${on.has(t.id)?`<small>${on.get(t.id)}명</small>`:""}</div>`).join("")+`</div></div>`;
   }
   function rankHtml(title){
-    const on=onlineTeams(), max=Math.max(1,...Object.values(G.scores));
-    const col=g=>`<div class="grp ${g}"><h3>${GNAME[g]}</h3><div class="rows">`+ranked(g,G.scores).map(t=>
-      `<div class="row ${t.rank===1&&t.score>0?"r1":""} ${on.has(t.id)||t.score>0?"":"off"}"><span class="fill" style="width:${t.score/max*100}%"></span><span class="rk">${t.rank}</span><span class="nm">${esc(t.name)}</span><span class="sc">${t.score.toLocaleString()}</span></div>`).join("")+`</div></div>`;
+    const sc=teamScores(), max=PTS*Math.max(1,G.done||0);
+    const col=g=>`<div class="grp ${g}"><h3>${GNAME[g]}</h3><div class="rows">`+ranked(g,sc).map(t=>
+      `<div class="row ${t.rank===1?"r1":""} ${t.n?"":"off"}"><span class="fill" style="width:${t.n?Math.min(100,t.score/max*100):0}%"></span><span class="rk">${t.rank??"-"}</span><span class="nm">${esc(t.name)}${t.n?`<small>${t.n}명</small>`:""}</span><span class="sc">${t.n?f1(t.score):"-"}</span></div>`).join("")+`</div></div>`;
     return `<div class="ranktitle">${title}</div><div class="rank">${col("m")}${col("w")}</div>`;
   }
   function qrSvg(text){const q=qrcode(0,"M");q.addData(text);q.make();return q.createSvgTag({cellSize:4,margin:2,scalable:true})}
@@ -2761,31 +2776,28 @@ function startHost(){
     const q=G.cur, last=G.qi>=Q.length-1;
     if(G.phase==="lobby"){
       st.innerHTML=`<div class="lobby">${joinHtml()}<div class="teams">${groupChips("m")}${groupChips("w")}</div></div>`;
-      bar.innerHTML=`<span class="info">문제 ${Q.length}개 준비됨 · 전도회가 접속하면 색이 켜집니다</span><button class="btn" id="bNext" ${Q.length?"":"disabled"}>대회 시작 · 1번 문제</button>`;
+      bar.innerHTML=`<span class="info">문제 ${Q.length}개 준비됨 · 전도회별 접속 인원이 표시됩니다</span><button class="btn" id="bNext" ${Q.length?"":"disabled"}>대회 시작 · 1번 문제</button>`;
       $("#bNext").onclick=()=>startQ(0);
     }else if(G.phase==="question"){
       st.innerHTML=`<div class="qhead"><span class="qno">문제 ${G.qi+1} / ${Q.length}</span><div class="tbar"><i id="tfill"></i></div><span class="tnum" id="tnum">${G.dur}</span></div>
         <div class="qtext">${esc(q.text)}</div>${optsHtml(q,false)}${subsHtml()}`;
-      bar.innerHTML=`<span class="info">모든 접속 전도회가 제출하거나 시간이 끝나면 자동으로 마감됩니다</span><button class="btn" id="bClose">지금 마감</button>`;
+      bar.innerHTML=`<span class="info">접속한 사람이 모두 제출하거나 시간이 끝나면 자동으로 마감됩니다</span><button class="btn" id="bClose">지금 마감</button>`;
       $("#bClose").onclick=closeQ;
     }else if(G.phase==="reveal"){
-      const list=Object.entries(G.answers).sort((a,b)=>(b[1].ok-a[1].ok)||(a[1].e-b[1].e));
-      const fast=list.find(([,a])=>a.ok);
-      const none=TEAMS.filter(t=>!G.answers[t.id]&&onlineTeams().has(t.id));
-      let n=0;
+      const list=Object.values(G.answers).sort((a,b)=>a.e-b.e), fast=list.find(a=>a.ok), okN=list.filter(a=>a.ok).length;
+      const per=TEAMS.map(t=>{const l=list.filter(a=>a.team===t.id);return {...t,n:l.length,c:l.filter(a=>a.ok).length}}).filter(t=>t.n).sort((a,b)=>b.c/b.n-a.c/a.n||b.n-a.n);
       st.innerHTML=`<div class="reveal"><div class="left"><div class="qhead"><span class="qno">문제 ${G.qi+1} / ${Q.length}</span></div>
         <div class="qtext small">${esc(q.text)}</div>${optsHtml(q,true)}</div>
-        <div class="right-col"><div class="fast">`+(fast?`<div class="lab">가장 빠른 정답</div><div class="who">${esc(TEAM[fast[0]].name)}</div><div class="how">${sec(fast[1].e)} · ${esc(shownAnswer(q,fast[1].a))}</div>`:`<div class="lab">이번 문제</div><div class="who">정답 없음</div>`)+`</div>
-        <div class="reslist">`+list.map(([t,a])=>`<div class="res ${a.ok?"":"x"}"><span class="n">${a.ok?++n:"✕"}</span><span class="nm ${TEAM[t].g}">${esc(TEAM[t].name)}<small>${esc(shownAnswer(q,a.a))}</small></span><span class="tm">${sec(a.e)}</span><span class="pt">${a.ok?"+"+a.pts:"오답"}</span></div>`).join("")+
-        none.map(t=>`<div class="res x"><span class="n">–</span><span class="nm ${t.g}">${esc(t.name)}</span><span class="tm"></span><span class="pt">미제출</span></div>`).join("")+
-        (list.length+none.length?"":`<p class="hint" style="padding:1em">제출한 전도회가 없습니다.</p>`)+`</div></div></div>`;
-      bar.innerHTML=`<span class="info">정답 ${list.filter(([,a])=>a.ok).length}곳 · 오답 ${list.filter(([,a])=>!a.ok).length}곳</span><button class="btn ghost" id="bRank">순위 보기</button>`+(last?"":`<button class="btn" id="bNext">다음 문제</button>`);
+        <div class="right-col"><div class="fast">`+(fast?`<div class="lab">가장 빠른 정답</div><div class="who">${esc(fast.name)}</div><div class="how">${esc(TEAM[fast.team].name)} · ${sec(fast.e)}</div>`:`<div class="lab">이번 문제</div><div class="who">정답 없음</div>`)+`</div>
+        <div class="reslist">`+per.map((t,i)=>`<div class="res"><span class="n">${i+1}</span><span class="nm ${t.g}">${esc(t.name)}</span><span class="tm">${t.n}명 중 ${t.c}명 정답</span><span class="pt">${f1(t.c/t.n*PTS)}점</span></div>`).join("")+
+        (per.length?"":`<p class="hint" style="padding:1em">제출한 사람이 없습니다.</p>`)+`</div></div></div>`;
+      bar.innerHTML=`<span class="info">제출 ${list.length}명 · 정답 ${okN}명 · 오답 ${list.length-okN}명</span><button class="btn ghost" id="bRank">순위 보기</button>`+(last?"":`<button class="btn" id="bNext">다음 문제</button>`);
       $("#bRank").onclick=()=>go(last?"final":"rank");
       if(!last)$("#bNext").onclick=()=>startQ(G.qi+1);
     }else{
       const fin=G.phase==="final";
       st.innerHTML=rankHtml(fin?"최종 순위":`${G.qi+1}번 문제까지의 순위`);
-      bar.innerHTML=`<span class="info">${fin?"모든 문제가 끝났습니다. 수고하셨습니다!":"점수 = 정답 500점 + 빠르기 점수(최대 500점)"}</span>`+
+      bar.innerHTML=`<span class="info">${fin?"모든 문제가 끝났습니다. 수고하셨습니다!":"순위 = 전도회 참여 인원의 평균 점수 (정답 10점 · 오답 0점)"}</span>`+
         `<button class="btn warn sm" id="bReset">${resetArmed?"한 번 더 누르면 모든 점수가 지워집니다":"새 대회 시작"}</button>`+
         (fin?"":`<button class="btn" id="bNext">다음 문제</button>`);
       if(!fin)$("#bNext").onclick=()=>startQ(G.qi+1);
@@ -2929,54 +2941,71 @@ function startHost(){
 /* ───────── 참가자 ───────── */
 function startPlayer(room,b){
   $("#player").classList.remove("hide");
-  const pre="bq26/"+room, cid=rid(10);
+  const pre="bq26/"+room;
+  let pid=LS.get("bq_pid_"+room,null);if(!pid){pid=rid(10);LS.set("bq_pid_"+room,pid)}
   let team=LS.get("bq_team_"+room,null); if(!TEAM[team])team=null;
+  let name=team?LS.get("bq_name_"+room,null):null;
+  const mine=LS.get("bq_mine_"+room,{}); // 내가 낸 답 {문제번호:{a,ok}}
   let S=null, online=false, t0=0, curQ=-1, sel=null, sent=null, lastKey="", gotState=false;
-  const client=connect(TEST_BROKER||BROKERS[b]||BROKERS[0],"bqu_"+room+"_"+cid);
-  client.on("connect",()=>{online=true;client.subscribe(pre+"/state",{qos:0});hi();render(true)});
+  const client=connect(TEST_BROKER||BROKERS[b]||BROKERS[0],"bqu_"+room+"_"+pid+rid(3));
+  client.on("connect",()=>{online=true;client.subscribe([pre+"/state",pre+"/ack/"+pid],{qos:1});hi();render(true)});
   client.on("close",()=>{online=false;render(true)});
   client.on("message",(t,buf)=>{let s;try{s=JSON.parse(buf.toString())}catch(e){return}
-    if(!s||typeof s.ph!=="string")return;
-    if(s.ph==="question"&&s.qid!==curQ){curQ=s.qid;t0=performance.now()-(s.age||0);sel=null;sent=null}
+    if(!s)return;
+    if(t.endsWith("/ack/"+pid)){
+      if(sent&&!sent.ack&&s.q===sent.q){sent.ack=true;mine[sent.q]={a:sent.a};LS.set("bq_mine_"+room,mine);render(true)}
+      return;
+    }
+    if(typeof s.ph!=="string")return;
+    if(s.ph==="question"&&s.qid!==curQ){curQ=s.qid;t0=performance.now()-(s.age||0);sel=null;const o=mine[s.qid];sent=o?{q:s.qid,a:o.a,e:o.e,at:0,ack:!o.pend}:null}
+    if(s.key&&mine[s.qid]&&mine[s.qid].pend){delete mine[s.qid];LS.set("bq_mine_"+room,mine)} // 끝내 전달되지 못한 답
+    if(s.key&&mine[s.qid]&&mine[s.qid].ok===undefined){mine[s.qid].ok=grade(s.key.t,s.key.a,mine[s.qid].a);LS.set("bq_mine_"+room,mine)}
     S=s;gotState=true;render();
   });
   const pub=(topic,o)=>{if(online)client.publish(pre+"/"+topic,JSON.stringify(o),{qos:1})};
-  const hi=()=>{if(team)pub("hi",{team,cid})};
-  setInterval(hi,6000);
-  setInterval(()=>{ // 타이머 + 제출 재전송
+  const hi=()=>{if(team&&name)pub("hi",{team,pid,name})};
+  setInterval(hi,10000);
+  setInterval(()=>{ // 타이머 + 받았다는 답이 올 때까지 다시 보내기
     if(S&&S.ph==="question"){
       const f=$("#ptf");if(f)f.style.width=Math.max(0,100-(performance.now()-t0)/(S.dur*10))+"%";
-      if(sent&&sent.q===S.qid&&!(S.sub||[]).includes(team)&&Date.now()-sent.at>1500){sent.at=Date.now();pub("ans",{team,cid,q:sent.q,a:sent.a,e:sent.e})}
+      if(sent&&!sent.ack&&sent.q===S.qid&&Date.now()-sent.at>1500){sent.at=Date.now();pub("ans",{team,pid,name,q:sent.q,a:sent.a,e:sent.e})}
     }
   },200);
   function submit(a){
     if(!S||S.ph!=="question"||sent)return;
     const e=Math.round(performance.now()-t0);
-    sent={q:S.qid,a,e,at:Date.now()};pub("ans",{team,cid,q:S.qid,a,e});render(true);
+    sent={q:S.qid,a,e,at:Date.now(),ack:false};mine[S.qid]={a,e,pend:true};LS.set("bq_mine_"+room,mine);pub("ans",{team,pid,name,q:S.qid,a,e});render(true);
   }
+  const myPts=()=>Object.values(mine).filter(x=>x.ok).length*PTS;
   function head(){
     const t=TEAM[team];
-    $("#phead").innerHTML=(t?`<span class="me ${t.g}">${esc(t.name)}</span><button class="chg" id="pchg">바꾸기</button>`:`<span class="me">성경 퀴즈 대회</span>`)+`<span class="st"><span class="dot ${online?"on":""}"></span>${online?"연결됨":"연결 중"}</span>`;
-    const c=$("#pchg");if(c)c.onclick=()=>{team=null;LS.set("bq_team_"+room,null);render(true)};
+    $("#phead").innerHTML=(t?`<span class="me ${t.g}">${esc(t.name)}${name?" · "+esc(name):""}</span><button class="chg" id="pchg">바꾸기</button>`:`<span class="me">성경 퀴즈 대회</span>`)+`<span class="st"><span class="dot ${online?"on":""}"></span>${online?"연결됨":"연결 중"}</span>`;
+    const c=$("#pchg");if(c)c.onclick=()=>{team=null;name=null;LS.set("bq_team_"+room,null);render(true)};
   }
   function myRank(){if(!S||!S.sc)return null;return ranked(TEAM[team].g,S.sc).find(t=>t.id===team)}
   function render(force){
-    const inSub=!!(S&&team&&(S.sub||[]).includes(team));
-    const key=[team,online,S&&S.ph,S&&S.qid,inSub,!!sent].join("|");
+    const key=[team,name,online,S&&S.ph,S&&S.qid,!!sent,sent&&sent.ack].join("|");
     if(!force&&key===lastKey)return; lastKey=key;
     head();
     const el=$("#pbody");
     if(!team){
       el.innerHTML=`<div class="pick"><div class="pcard"><h2>우리 전도회를 골라 주세요</h2></div>`+["m","w"].map(g=>`<h3 class="${g}">${GNAME[g]}</h3><div class="pgrid ${g}">`+TEAMS.filter(t=>t.g===g).map(t=>`<button data-t="${t.id}">${esc(t.name)}</button>`).join("")+`</div>`).join("")+`</div>`;
-      el.querySelectorAll("[data-t]").forEach(bn=>bn.onclick=()=>{team=bn.dataset.t;LS.set("bq_team_"+room,team);hi();render(true)});
+      el.querySelectorAll("[data-t]").forEach(bn=>bn.onclick=()=>{team=bn.dataset.t;LS.set("bq_team_"+room,team);render(true)});
       return;
     }
     const T=TEAM[team];
+    if(!name){
+      el.innerHTML=`<div class="center"><div class="pcard"><div class="big">${esc(T.name)}</div><h2>이름을 입력해 주세요</h2><p>전도회 평균 점수에 내 점수가 들어갑니다.</p></div>
+        <input class="pin" id="pname" type="text" maxlength="12" autocomplete="name" placeholder="예: 홍길동" value="${esc(LS.get("bq_name_"+room,"")||"")}"><button class="btn submit" id="pnameOk">입장하기</button></div>`;
+      const ok=()=>{const v=$("#pname").value.trim();if(!v){$("#pname").focus();return}name=v;LS.set("bq_name_"+room,name);hi();render(true)};
+      $("#pnameOk").onclick=ok;$("#pname").onkeydown=e=>{if(e.key==="Enter")ok()};
+      return;
+    }
     if(!gotState){el.innerHTML=`<div class="center"><div class="pcard"><h2>진행자 화면에 연결하는 중…</h2><p>잠시만 기다려 주세요.</p></div></div>`;return}
-    if(S.ph==="lobby"){el.innerHTML=`<div class="center"><div class="pcard"><div class="big">${esc(T.name)}</div><h2>접속 완료!</h2><p>앞 화면에 문제가 나오면 이 화면에서 답을 고르고 제출해 주세요.</p></div></div>`;return}
+    if(S.ph==="lobby"){el.innerHTML=`<div class="center"><div class="pcard"><div class="big">${esc(name)}</div><h2>${esc(T.name)} 접속 완료!</h2><p>앞 화면에 문제가 나오면 이 화면에서 답을 고르고 제출해 주세요.</p></div></div>`;return}
     if(S.ph==="question"){
-      if(sent||inSub){
-        el.innerHTML=`<div class="center"><div class="pcard"><h2>제출 완료!</h2>`+(sent?`<div class="big">${sec(sent.e)}</div>`:`<p>우리 전도회의 다른 휴대폰에서 이미 제출했습니다.</p>`)+`<p>${inSub?"앞 화면에서 결과를 확인해 주세요.":"보내는 중…"}</p></div></div>`;return;
+      if(sent){
+        el.innerHTML=`<div class="center"><div class="pcard"><h2>제출 완료!</h2><p>${sent.ack?"앞 화면에서 결과를 확인해 주세요.":"보내는 중…"}</p></div></div>`;return;
       }
       const q=S.q;let body;
       if(q.t==="short")body=`<input class="pin" id="pin" type="text" maxlength="40" autocomplete="off" placeholder="정답을 입력하세요">`;
@@ -2988,12 +3017,12 @@ function startPlayer(room,b){
       const pin=$("#pin");if(pin)pin.onkeydown=e=>{if(e.key==="Enter")$("#psub").click()};
       return;
     }
-    const r=myRank(), rk=r?`<p>${GNAME[T.g]} ${r.rank}위 · ${r.score.toLocaleString()}점</p>`:"";
+    const r=myRank(), tl=r&&r.n?`<p>${esc(T.name)} 평균 ${f1(r.score)}점 · ${GNAME[T.g]} ${r.rank}위</p>`:"";
     if(S.ph==="reveal"){
-      const m=S.res&&S.res[team];
-      el.innerHTML=`<div class="center">`+(m?(m.ok?`<div class="pcard good"><div class="big">정답!</div><h2>+${m.pts}점</h2><p>${sec(m.e)} 만에 제출</p></div>`:`<div class="pcard badc"><div class="big">아쉬워요</div><p>정답은 ${esc(S.ans)}</p></div>`):`<div class="pcard"><h2>제출하지 못했어요</h2><p>정답은 ${esc(S.ans)}</p></div>`)+`<div class="pcard"><h2>${esc(T.name)}</h2>${rk}</div></div>`;return;
+      const m=mine[S.qid];
+      el.innerHTML=`<div class="center">`+(m?(m.ok?`<div class="pcard good"><div class="big">정답!</div><h2>+${PTS}점</h2></div>`:`<div class="pcard badc"><div class="big">아쉬워요</div><p>정답은 ${esc(S.ans)}</p></div>`):`<div class="pcard"><h2>제출하지 못했어요</h2><p>정답은 ${esc(S.ans)}</p></div>`)+`<div class="pcard"><h2>내 점수 ${myPts()}점</h2>${tl}</div></div>`;return;
     }
-    el.innerHTML=`<div class="center"><div class="pcard"><p>${S.ph==="final"?"최종 순위":"현재 순위"}</p><div class="big">${r?r.rank+"위":"-"}</div><h2>${esc(T.name)} · ${r?r.score.toLocaleString():0}점</h2><p>${S.ph==="final"?"수고하셨습니다!":"다음 문제를 기다려 주세요."}</p></div></div>`;
+    el.innerHTML=`<div class="center"><div class="pcard"><p>${S.ph==="final"?"최종 순위":"현재 순위"} · ${GNAME[T.g]}</p><div class="big">${r&&r.rank?r.rank+"위":"-"}</div><h2>${esc(T.name)} 평균 ${r&&r.n?f1(r.score):"0.0"}점</h2><p>${r&&r.n?r.n+"명 참여 · ":""}내 점수 ${myPts()}점</p><p>${S.ph==="final"?"수고하셨습니다!":"다음 문제를 기다려 주세요."}</p></div></div>`;
   }
   render(true);
 }
