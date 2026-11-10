@@ -136,6 +136,9 @@ dialog h2{font-family:var(--disp);font-weight:400;margin-bottom:14px}
 .crow input[type=radio]{width:1.3em;height:1.3em;accent-color:var(--ok)}
 .dbtn{display:flex;gap:10px;justify-content:flex-end}
 .hint{color:var(--mute);font-size:.85rem}
+.implist{max-height:46vh;overflow:auto;border:2px solid var(--line);border-radius:12px;padding:6px 10px;font-size:.92rem}
+.implist div{padding:.35em 0;border-bottom:1px solid var(--line)} .implist div:last-child{border:0}
+.implist .e{color:var(--bad)} .implist small{color:var(--mute);margin-left:.4em}
 
 /* ───────── 참가자(휴대폰) 화면 ───────── */
 #player{min-height:100%;display:flex;flex-direction:column;max-width:560px;margin:0 auto;padding:14px 16px 24px}
@@ -194,6 +197,12 @@ dialog h2{font-family:var(--disp);font-weight:400;margin-bottom:14px}
   <div class="pbody" id="pbody"></div>
 </div>
 
+<dialog id="imp">
+  <h2 id="impTitle">파일에서 문제 읽기</h2>
+  <p id="impSum" style="margin-bottom:10px;font-weight:700"></p>
+  <div id="impList" class="implist"></div>
+  <div class="dbtn" style="margin-top:14px;flex-wrap:wrap"><button type="button" class="btn ghost sm" id="impCancel">취소</button><button type="button" class="btn warn sm" id="impReplace">기존 문제를 지우고 교체</button><button type="button" class="btn sm" id="impAdd">기존 문제 뒤에 추가</button></div>
+</dialog>
 <dialog id="dlg">
   <form id="qform">
     <h2 id="dlgTitle">문제 추가</h2>
@@ -217,6 +226,7 @@ dialog h2{font-family:var(--disp);font-weight:400;margin-bottom:14px}
 
 <script>/*__QR__*/</script>
 <script>/*__MQTT__*/</script>
+<script>/*__XLSX__*/</script>
 <script>
 "use strict";
 /* ───────── 공통 ───────── */
@@ -428,14 +438,17 @@ function startHost(){
   /* 문제 관리 */
   function renderMgr(){
     const tn={choice:"객관식",ox:"O/X",short:"주관식"};
-    $("#stage").innerHTML=`<div class="mgr"><div class="tools"><p>문제는 이 컴퓨터의 브라우저에 저장됩니다. 대회 중에도 아직 내지 않은 문제는 고칠 수 있습니다.</p>
-      <button class="btn sm" id="qAdd">문제 추가</button><button class="btn ghost sm" id="qSample">예시 문제로 되돌리기</button></div>`+
+    $("#stage").innerHTML=`<div class="mgr"><div class="tools"><p>문제는 이 컴퓨터의 브라우저에 저장됩니다. 엑셀(.xlsx) · CSV · 메모장(.txt) 파일을 올리면 문제가 한꺼번에 만들어집니다.</p>
+      <button class="btn sm" id="qAdd">문제 추가</button><button class="btn sm" id="qFile">파일로 문제 올리기</button><button class="btn ghost sm" id="qTpl">엑셀 양식 받기</button><input type="file" id="qFileIn" class="hide" accept=".xlsx,.csv,.txt"><button class="btn ghost sm" id="qSample">예시 문제로 되돌리기</button></div>`+
       Q.map((q,i)=>`<div class="qi ${i===G.qi&&G.phase!=="lobby"?"cur":""}"><span class="no">${i+1}</span><div><div class="tx">${esc(q.text)}</div><div class="meta">${tn[q.type]} · 정답 ${esc(q.type==="short"?q.answers.join(", "):answerText(q))} · ${q.time||20}초</div></div>
         <div class="acts"><button class="btn ghost sm" data-a="up" data-i="${i}" ${i?"":"disabled"} aria-label="위로">↑</button><button class="btn ghost sm" data-a="dn" data-i="${i}" ${i<Q.length-1?"":"disabled"} aria-label="아래로">↓</button><button class="btn ghost sm" data-a="ed" data-i="${i}">수정</button><button class="btn warn sm" data-a="rm" data-i="${i}">삭제</button></div></div>`).join("")+
       (Q.length?"":`<p class="hint">문제가 없습니다. 문제 추가를 눌러 주세요.</p>`)+`</div>`;
     $("#bar").innerHTML=`<span class="info">문제 ${Q.length}개</span><button class="btn" id="bBack">대회 진행 화면으로</button>`;
     $("#bBack").onclick=()=>{tab="play";render()};
     $("#qAdd").onclick=()=>openDlg(-1);
+    $("#qFile").onclick=()=>$("#qFileIn").click();
+    $("#qFileIn").onchange=ev=>{const f=ev.target.files[0];if(f)importFile(f)};
+    $("#qTpl").onclick=downloadTemplate;
     $("#qSample").onclick=()=>{Q=JSON.parse(JSON.stringify(SAMPLE));saveQ();render()};
     $("#stage").querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{
       const i=+b.dataset.i,a=b.dataset.a;
@@ -454,6 +467,82 @@ function startHost(){
     for(let k=0;k<4;k++){$("#fC"+k).value=q.type==="choice"?(q.choices[k]||""):"";$("#fA"+k).checked=q.type==="choice"?q.answer===k:k===0}
     $("#fOx").value=q.type==="ox"?q.answer:"O";$("#fShort").value=q.type==="short"?q.answers.join(", "):"";
     typeBoxes();$("#dlg").showModal();
+  }
+  /* 파일로 문제 올리기 */
+  let impQ=[];
+  function makeQ(text,slots,ansRaw,timeRaw){ // slots: 보기 칸(빈칸 포함), 번호 정답은 칸 위치 기준
+    text=String(text||"").trim();if(!text)return null;
+    let ans=String(ansRaw??"").trim();const t=parseInt(timeRaw,10),time=t>0?Math.min(300,Math.max(5,t)):20;
+    const keep=slots.map((c,k)=>({c:String(c??"").trim(),k})).filter(o=>o.c);
+    if(!ans)return {err:"정답이 없습니다",text};
+    if(keep.length===1)return {err:"보기가 1개뿐입니다",text};
+    if(keep.length>=2){
+      if(keep.length>4)return {err:"보기는 4개까지 가능합니다",text};
+      const c="①②③④".indexOf(ans[0]);let pos=c>=0?c:(/^[1-4]\s*번?$/.test(ans)?parseInt(ans,10)-1:-1);
+      let idx=pos>=0?keep.findIndex(o=>o.k===pos):-1;
+      if(idx<0)idx=keep.findIndex(o=>norm(o.c)===norm(ans));
+      if(idx<0)return {err:"정답 '"+ans+"'을(를) 보기에서 찾을 수 없습니다",text};
+      return {type:"choice",text,choices:keep.map(o=>o.c),answer:idx,time};
+    }
+    if(/^(o|○|◯|맞다|참)$/i.test(ans))return {type:"ox",text,answer:"O",time};
+    if(/^(x|×|✕|틀리다|거짓)$/i.test(ans))return {type:"ox",text,answer:"X",time};
+    return {type:"short",text,answers:ans.split(/[,，]/).map(x=>x.trim()).filter(Boolean),time};
+  }
+  function rowsToQ(rows){
+    rows=rows.map(r=>r.map(c=>String(c??"").trim())).filter(r=>r.some(c=>c));
+    if(!rows.length)return [];
+    let col={q:0,c:[1,2,3,4],a:5,t:6};
+    const h=rows[0],hq=h.findIndex(c=>/^문제/.test(c)),ha=h.findIndex(c=>/^(정답|답)/.test(c));
+    if(hq>=0&&ha>=0){
+      const hc=h.map((c,i)=>/^보기/.test(c)?i:-1).filter(i=>i>=0);
+      col={q:hq,c:hc,a:ha,t:h.findIndex(c=>/시간/.test(c))};rows=rows.slice(1);
+    }else if(rows.every(r=>/^\d+$/.test(r[0])))col={q:1,c:[2,3,4,5],a:6,t:7}; // 첫 칸이 번호
+    return rows.map(r=>makeQ(r[col.q],col.c.map(i=>r[i]),r[col.a],col.t>=0?r[col.t]:"")).filter(Boolean);
+  }
+  function textToQ(txt){
+    return txt.replace(/\r/g,"").split(/\n\s*\n/).map(block=>{
+      const lines=block.split("\n").map(l=>l.trim()).filter(Boolean);if(!lines.length)return null;
+      const text=lines[0].replace(/^(문제\s*)?\d+\s*[.)번:]\s*/,"");let ans="",time="";const ch=[];
+      for(const l of lines.slice(1)){let m;
+        if(m=l.match(/^(정답|답)\s*[:：]?\s*(.*)$/))ans=m[2];
+        else if(m=l.match(/^(제한\s*)?시간\s*[:：]?\s*(\d+)/))time=m[2];
+        else ch.push(l.replace(/^([①②③④]|\(?\d\)|\d\.|[-•·])\s*/,""));
+      }
+      return makeQ(text,ch,ans,time);
+    }).filter(Boolean);
+  }
+  function decode(buf){try{return new TextDecoder("utf-8",{fatal:true}).decode(buf)}catch(e){return new TextDecoder("euc-kr").decode(buf)}}
+  async function importFile(f){
+    $("#qFileIn").value="";
+    const name=f.name.toLowerCase();let list=[],fail="";
+    try{
+      const buf=await f.arrayBuffer();
+      if(name.endsWith(".txt"))list=textToQ(decode(buf).replace(/^\uFEFF/,""));
+      else if(name.endsWith(".csv")||name.endsWith(".xlsx")){
+        const wb=name.endsWith(".csv")?XLSX.read(decode(buf).replace(/^\uFEFF/,""),{type:"string",raw:true}):XLSX.read(buf,{type:"array"});
+        list=rowsToQ(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:""}));
+      }else fail="엑셀(.xlsx), CSV(.csv), 메모장(.txt) 파일만 올릴 수 있습니다. 한글(.hwp)이나 워드 파일은 내용을 메모장에 붙여 넣어 .txt로 저장해 주세요.";
+    }catch(e){fail="파일을 읽지 못했습니다. 양식을 확인해 주세요."}
+    impQ=list.filter(q=>!q.err);const bad=list.filter(q=>q.err);
+    const tn={choice:"객관식",ox:"O/X",short:"주관식"};
+    $("#impSum").textContent=fail||(impQ.length?`문제 ${impQ.length}개를 읽었습니다.`:"읽을 수 있는 문제가 없습니다.")+(bad.length?` 읽지 못한 문제 ${bad.length}개는 빼고 올립니다.`:"");
+    $("#impList").innerHTML=bad.map(q=>`<div class="e">✕ ${esc(q.text)}<small>${esc(q.err)}</small></div>`).join("")+impQ.map((q,i)=>`<div>${i+1}. ${esc(q.text)}<small>${tn[q.type]} · 정답 ${esc(q.type==="short"?q.answers.join(", "):answerText(q))} · ${q.time}초</small></div>`).join("");
+    $("#impList").classList.toggle("hide",!list.length);
+    $("#impAdd").classList.toggle("hide",!impQ.length);$("#impReplace").classList.toggle("hide",!impQ.length);
+    $("#imp").showModal();
+  }
+  $("#impCancel").onclick=()=>$("#imp").close();
+  $("#impAdd").onclick=()=>{Q=Q.concat(impQ);saveQ();$("#imp").close();render()};
+  $("#impReplace").onclick=()=>{Q=impQ.slice();saveQ();$("#imp").close();render()};
+  function downloadTemplate(){
+    const ws=XLSX.utils.aoa_to_sheet([["문제","보기1","보기2","보기3","보기4","정답","시간(초)"],
+      ["(객관식 예) 신약성경은 모두 몇 권일까요?","27권","29권","39권","66권","1",20],
+      ["(O/X 예) 예수님의 열두 제자 중 마태는 세리였다.","","","","","O",15],
+      ["(주관식 예) 예수님께서 태어나신 마을은?","","","","","베들레헴",25]]);
+    ws["!cols"]=[{wch:50},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:9}];
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"문제");
+    const url=URL.createObjectURL(new Blob([XLSX.write(wb,{type:"array",bookType:"xlsx"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+    const el=document.createElement("a");el.href=url;el.download="성경퀴즈_문제양식.xlsx";document.body.appendChild(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
   }
   $("#fType").onchange=typeBoxes;
   $("#fCancel").onclick=()=>$("#dlg").close();
