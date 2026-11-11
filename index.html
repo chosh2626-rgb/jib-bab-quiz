@@ -55,6 +55,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .grp h3{font-family:var(--disp);font-weight:400;font-size:clamp(1.1rem,1.8vw,1.9rem);margin-bottom:1.2vh;display:flex;align-items:center;gap:.5em}
 .grp h3 small{font-family:var(--body);font-size:.6em;color:var(--mute);font-weight:500}
 .grp.m h3{color:var(--men)} .grp.w h3{color:var(--women)}
+.row .sc{white-space:nowrap}
 .chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(8.5em,1fr));gap:1vh .8vw;font-size:clamp(.95rem,1.5vw,1.6rem)}
 .chip{font-family:var(--disp);text-align:center;padding:.5em .3em;border-radius:14px;background:#F1EFF8;color:#B1ABCB;border:2px dashed #D5CFEC}
 .grp.m .chip.on{background:var(--men);color:#fff;border:2px solid var(--men)}
@@ -134,7 +135,7 @@ dialog h2{font-family:var(--disp);font-weight:400;margin-bottom:14px}
 .top .qrbtn{color:#fff;font-weight:700;background:rgba(255,255,255,.3)}
 .menu{background:var(--card);border-radius:28px;padding:2.4vh 1.8vw;display:flex;flex-direction:column;gap:1.4vh;min-height:0}
 .menu h2{font-family:var(--disp);font-weight:400;font-size:clamp(1.3rem,2.3vw,2.4rem)}
-.mi{flex:1;display:flex;flex-direction:column;justify-content:center;gap:.2em;text-align:left;padding:.7em 1.2em;border-radius:20px;background:#F3F0FF;border:2px solid var(--line);min-height:3.6em}
+.mi{flex:1;display:flex;flex-direction:column;justify-content:center;gap:.1em;text-align:left;padding:.45em 1.2em;border-radius:20px;background:#F3F0FF;border:2px solid var(--line);min-height:3.6em}
 .mi b{font-family:var(--disp);font-weight:400;font-size:clamp(1.15rem,2vw,2.1rem);color:var(--main)}
 .mi span{color:var(--mute);font-size:clamp(.85rem,1.1vw,1.15rem)}
 .mi:hover{border-color:var(--main)}
@@ -2596,7 +2597,7 @@ const sec=ms=>(ms/1000).toFixed(2)+"초";
 function answerText(q){return q.type==="choice"?q.choices[q.answer]:q.type==="ox"?q.answer:q.answers[0]}
 function shownAnswer(q,a){return q.type==="choice"?(q.choices[a]??""):String(a??"")}
 function ranked(g,sc){ // 평균 점수 순, 같은 점수는 같은 등수, 참여자가 없으면 순위 없음
-  const arr=TEAMS.filter(t=>t.g===g).map(t=>{const x=sc&&sc[t.id];return {...t,n:x?x.n:0,score:x&&x.n?x.avg:-1}}).sort((a,b)=>b.score-a.score);
+  const arr=TEAMS.filter(t=>t.g===g).map(t=>{const x=sc&&sc[t.id];return {...t,n:x?x.n:0,sum:x?x.sum:0,score:x&&x.n?x.avg:-1}}).sort((a,b)=>b.score-a.score);
   arr.forEach((t,i)=>{t.rank=t.n?(i>0&&arr[i-1].score===t.score?arr[i-1].rank:i+1):null});
   return arr;
 }
@@ -2612,7 +2613,7 @@ function startHost(){
   $("#host").classList.remove("hide");
   let Q=LS.get("bq_questions",null)||JSON.parse(JSON.stringify(SAMPLE));
   let G=LS.get("bq_game",null);if(!G||!G.members)G=fresh();
-  let tab="home", client=null, online=false, devices={}, lastOnlineKey="", resetArmed=0, editing=-1;
+  let back="home", tab="home", client=null, online=false, devices={}, lastOnlineKey="", resetArmed=0, editing=-1;
   function fresh(){return {room:rid(5),b:-1,phase:"lobby",qi:-1,qid:0,startAt:0,dur:20,cur:null,answers:{},members:{},done:0}}
   const save=()=>LS.set("bq_game",G);
   const saveQ=()=>LS.set("bq_questions",Q);
@@ -2621,7 +2622,7 @@ function startHost(){
   const onlineTeams=()=>{const m=new Map();for(const c of onlinePids())m.set(devices[c].team,(m.get(devices[c].team)||0)+1);return m};
   function teamScores(){ // 전도회별 평균 = 참여자(한 번이라도 제출한 사람) 점수 합 ÷ 참여자 수
     const o={};for(const id in G.members){const m=G.members[id];if(!m.cnt)continue;const x=o[m.team]||(o[m.team]={sum:0,n:0});x.sum+=m.pts;x.n++}
-    for(const t in o)o[t]={n:o[t].n,avg:Math.round(o[t].sum/o[t].n*100)/100};return o;
+    for(const t in o)o[t]={n:o[t].n,sum:o[t].sum,avg:Math.round(o[t].sum/o[t].n*100)/100};return o;
   }
   let pend=0;const schedule=()=>{if(pend)return;pend=setTimeout(()=>{pend=0;save();publish();if(tab==="play")render()},250)};
   const joinUrl=()=>location.origin+location.pathname+location.search+"#r="+G.room+"&b="+G.b;
@@ -2733,10 +2734,12 @@ function startHost(){
     return `<div class="grp ${g}"><h3>${GNAME[g]} <small>${ts.reduce((n,t)=>n+(on.get(t.id)||0),0)}명 접속</small></h3><div class="chips">`+
       ts.map(t=>`<div class="chip ${on.has(t.id)?"on":""}">${esc(t.name)}${on.has(t.id)?`<small>${on.get(t.id)}명</small>`:""}</div>`).join("")+`</div></div>`;
   }
-  function rankHtml(title){
-    const sc=teamScores(), max=PTS*Math.max(1,G.done||0);
-    const col=g=>`<div class="grp ${g}"><h3>${GNAME[g]}</h3><div class="rows">`+ranked(g,sc).map(t=>
-      `<div class="row ${t.rank===1?"r1":""} ${t.n?"":"off"}"><span class="fill" style="width:${t.n?Math.min(100,t.score/max*100):0}%"></span><span class="rk">${t.rank??"-"}</span><span class="nm">${esc(t.name)}${t.n?`<small>${t.n}명</small>`:""}</span><span class="sc">${t.n?f1(t.score):"-"}</span></div>`).join("")+`</div></div>`;
+  function rankHtml(title,bySum){ // bySum: 누적 점수(합계) 순으로 보기
+    const sc=teamScores(), max=PTS*Math.max(1,G.done||0), maxSum=Math.max(1,...Object.values(sc).map(x=>x.sum));
+    const col=g=>{let arr=ranked(g,sc);
+      if(bySum){arr=arr.slice().sort((a,b)=>b.sum-a.sum||b.score-a.score);arr.forEach((t,i)=>{t.rank=t.n?(i>0&&arr[i-1].sum===t.sum?arr[i-1].rank:i+1):null})}
+      return `<div class="grp ${g}"><h3>${GNAME[g]} <small>${bySum?"누적 점수 순":"평균 점수 순"}</small></h3><div class="rows">`+arr.map(t=>
+      `<div class="row ${t.rank===1?"r1":""} ${t.n?"":"off"}"><span class="fill" style="width:${t.n?Math.min(100,bySum?t.sum/maxSum*100:t.score/max*100):0}%"></span><span class="rk">${t.rank??"-"}</span><span class="nm">${esc(t.name)}${t.n?`<small>${t.n}명 · ${bySum?"평균 "+f1(t.score):"누적 "+t.sum+"점"}</small>`:""}</span><span class="sc">${t.n?(bySum?t.sum.toLocaleString()+"점":f1(t.score)):"-"}</span></div>`).join("")+`</div></div>`};
     return `<div class="ranktitle">${title}</div><div class="rank">${col("m")}${col("w")}</div>`;
   }
   function qrSvg(text){const q=qrcode(0,"M");q.addData(text);q.make();return q.createSvgTag({cellSize:4,margin:2,scalable:true})}
@@ -2754,12 +2757,13 @@ function startHost(){
     $("#stage").innerHTML=`<div class="lobby">${joinHtml()}<div class="menu"><h2>메인 메뉴</h2>`+
       item("mPlay","go",started?(fin?"최종 순위 보기":"대회 이어서 진행"):"대회 진행",started?(fin?"모든 문제가 끝났습니다":`${G.qi+1}번 문제까지 진행했습니다 · 전체 ${Q.length}문제`):"전도회 접속 현황을 보고 1번 문제를 시작합니다")+
       item("mMgr","","문제 관리",`문제 ${Q.length}개 · 직접 추가하거나 파일로 올립니다`)+
-      item("mRank","","현재 순위","남전도회 · 여전도회 순위를 봅니다")+
+      item("mRank","","현재 순위","남전도회 · 여전도회 평균 점수 순위를 봅니다")+
+      item("mSum","","전도회별 누적 점수","전도회마다 지금까지 쌓인 점수 합계를 봅니다")+
       item("mQr","","QR 코드 크게 보기","늦게 온 분이 접속할 수 있도록 화면 가득 띄웁니다")+
       item("mReset","danger",resetArmed?"한 번 더 누르면 모든 점수가 지워집니다":"새 대회 시작","점수와 진행 상황을 지우고 처음부터 시작합니다 (문제는 그대로)")+`</div></div>`;
     $("#bar").innerHTML=`<span class="info">대회 중에도 위쪽의 「QR 코드 보기」를 누르면 언제든 QR을 다시 띄울 수 있습니다</span>`;
     $("#mPlay").onclick=()=>{tab="play";render()};$("#mMgr").onclick=()=>{tab="mgr";render()};
-    $("#mRank").onclick=()=>{tab="rank";render()};$("#mQr").onclick=showQr;$("#mReset").onclick=armReset;
+    $("#mRank").onclick=()=>{back="home";tab="rank";render()};$("#mSum").onclick=()=>{back="home";tab="sum";render()};$("#mQr").onclick=showQr;$("#mReset").onclick=armReset;
   }
   function showQr(){
     $("#qrdBody").innerHTML=G.b<0?`<p class="hint">연결 준비 중…</p>`:`<div class="qr">${qrSvg(joinUrl())}</div><div class="link">${esc(joinUrl())}</div><div class="code">${esc(G.room)}</div>`;
@@ -2768,11 +2772,15 @@ function startHost(){
   $("#bQr").onclick=showQr;$("#qrdClose").onclick=()=>$("#qrd").close();
   $("#tabHome").onclick=()=>{tab="home";render()};
   function render(){
-    $("#tabHome").classList.toggle("on",tab==="home"||tab==="rank");$("#tabPlay").classList.toggle("on",tab==="play");$("#tabMgr").classList.toggle("on",tab==="mgr");
+    $("#tabHome").classList.toggle("on",tab==="home"||((tab==="rank"||tab==="sum")&&back==="home"));$("#tabPlay").classList.toggle("on",tab==="play"||((tab==="rank"||tab==="sum")&&back==="play"));$("#tabMgr").classList.toggle("on",tab==="mgr");
     const st=$("#stage"),bar=$("#bar");
     if(tab==="mgr")return renderMgr();
     if(tab==="home")return renderHome();
-    if(tab==="rank"){st.innerHTML=rankHtml(G.qi>=0?`${G.qi+1}번 문제까지의 순위`:"현재 순위");bar.innerHTML=`<span class="info">순위만 보는 화면입니다. 대회 진행에는 영향을 주지 않습니다.</span><button class="btn" id="bHome">메인으로</button>`;$("#bHome").onclick=()=>{tab="home";render()};return}
+    if(tab==="rank"||tab==="sum"){
+      const by=tab==="sum";
+      st.innerHTML=rankHtml(by?"전도회별 누적 점수":(G.qi>=0?`${G.qi+1}번 문제까지의 순위`:"현재 순위"),by);
+      bar.innerHTML=`<span class="info">${by?"누적 점수 = 그 전도회 참여자들이 얻은 점수의 합계 (정답 1개 10점)":"순위 = 전도회 참여 인원의 평균 점수"} · 보기만 하는 화면입니다</span><button class="btn ghost" id="bSwap">${by?"평균 순위 보기":"누적 점수 보기"}</button><button class="btn" id="bHome">${back==="play"?"대회 진행으로":"메인으로"}</button>`;
+      $("#bSwap").onclick=()=>{tab=by?"rank":"sum";render()};$("#bHome").onclick=()=>{tab=back;render()};return}
     const q=G.cur, last=G.qi>=Q.length-1;
     if(G.phase==="lobby"){
       st.innerHTML=`<div class="lobby">${joinHtml()}<div class="teams">${groupChips("m")}${groupChips("w")}</div></div>`;
@@ -2798,10 +2806,10 @@ function startHost(){
       const fin=G.phase==="final";
       st.innerHTML=rankHtml(fin?"최종 순위":`${G.qi+1}번 문제까지의 순위`);
       bar.innerHTML=`<span class="info">${fin?"모든 문제가 끝났습니다. 수고하셨습니다!":"순위 = 전도회 참여 인원의 평균 점수 (정답 10점 · 오답 0점)"}</span>`+
-        `<button class="btn warn sm" id="bReset">${resetArmed?"한 번 더 누르면 모든 점수가 지워집니다":"새 대회 시작"}</button>`+
+        `<button class="btn warn sm" id="bReset">${resetArmed?"한 번 더 누르면 모든 점수가 지워집니다":"새 대회 시작"}</button><button class="btn ghost" id="bSum">누적 점수 보기</button>`+
         (fin?"":`<button class="btn" id="bNext">다음 문제</button>`);
       if(!fin)$("#bNext").onclick=()=>startQ(G.qi+1);
-      $("#bReset").onclick=armReset;
+      $("#bReset").onclick=armReset;$("#bSum").onclick=()=>{back="play";tab="sum";render()};
     }
   }
 
@@ -3022,7 +3030,7 @@ function startPlayer(room,b){
       const m=mine[S.qid];
       el.innerHTML=`<div class="center">`+(m?(m.ok?`<div class="pcard good"><div class="big">정답!</div><h2>+${PTS}점</h2></div>`:`<div class="pcard badc"><div class="big">아쉬워요</div><p>정답은 ${esc(S.ans)}</p></div>`):`<div class="pcard"><h2>제출하지 못했어요</h2><p>정답은 ${esc(S.ans)}</p></div>`)+`<div class="pcard"><h2>내 점수 ${myPts()}점</h2>${tl}</div></div>`;return;
     }
-    el.innerHTML=`<div class="center"><div class="pcard"><p>${S.ph==="final"?"최종 순위":"현재 순위"} · ${GNAME[T.g]}</p><div class="big">${r&&r.rank?r.rank+"위":"-"}</div><h2>${esc(T.name)} 평균 ${r&&r.n?f1(r.score):"0.0"}점</h2><p>${r&&r.n?r.n+"명 참여 · ":""}내 점수 ${myPts()}점</p><p>${S.ph==="final"?"수고하셨습니다!":"다음 문제를 기다려 주세요."}</p></div></div>`;
+    el.innerHTML=`<div class="center"><div class="pcard"><p>${S.ph==="final"?"최종 순위":"현재 순위"} · ${GNAME[T.g]}</p><div class="big">${r&&r.rank?r.rank+"위":"-"}</div><h2>${esc(T.name)} 평균 ${r&&r.n?f1(r.score):"0.0"}점</h2><p>${r&&r.n?r.n+"명 참여 · 누적 "+r.sum+"점 · ":""}내 점수 ${myPts()}점</p><p>${S.ph==="final"?"수고하셨습니다!":"다음 문제를 기다려 주세요."}</p></div></div>`;
   }
   render(true);
 }
