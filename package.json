@@ -9,10 +9,13 @@
     "build": "node build.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
     "aedes": "0.51.3",
+    "cfb": "^1.2.2",
+    "hwp.js": "^0.0.3",
+    "pdfjs-dist": "^4.10.38",
     "ws": "^8.18.0"
   },
   "devDependencies": {
