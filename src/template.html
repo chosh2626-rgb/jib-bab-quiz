@@ -165,6 +165,8 @@ dialog.qrd{width:min(94vw,86vh);text-align:center}
 .hint{color:var(--mute);font-size:.85rem}
 .implist{max-height:46vh;overflow:auto;border:2px solid var(--line);border-radius:12px;padding:6px 10px;font-size:.92rem}
 .implist div{padding:.35em 0;border-bottom:1px solid var(--line)} .implist div:last-child{border:0}
+.impopt{display:flex;align-items:center;gap:.5em;flex-wrap:wrap;font-weight:700;margin-bottom:10px} .impopt input{width:1.2em;height:1.2em;accent-color:var(--main)} .impopt small{color:var(--mute);font-weight:400}
+.opts.long .opt{font-size:clamp(1rem,1.7vw,1.9rem)}
 .implist .e{color:var(--bad)} .implist small{color:var(--mute);margin-left:.4em}
 
 /* ───────── 참가자(휴대폰) 화면 ───────── */
@@ -234,6 +236,7 @@ dialog.qrd{width:min(94vw,86vh);text-align:center}
 <dialog id="imp">
   <h2 id="impTitle">파일에서 문제 읽기</h2>
   <p id="impSum" style="margin-bottom:10px;font-weight:700"></p>
+  <label class="impopt" id="impConvBox"><input type="checkbox" id="impConv" checked> 주관식 문제는 객관식(4지선다)으로 바꾸기 <small>다른 문제의 정답을 틀린 보기로 씁니다</small></label>
   <div id="impList" class="implist"></div>
   <div class="dbtn" style="margin-top:14px;flex-wrap:wrap"><button type="button" class="btn ghost sm" id="impCancel">취소</button><button type="button" class="btn warn sm" id="impReplace">기존 문제를 지우고 교체</button><button type="button" class="btn sm" id="impAdd">기존 문제 뒤에 추가</button></div>
 </dialog>
@@ -309,7 +312,7 @@ if(hp.get("r")) startPlayer(hp.get("r").toUpperCase(),+hp.get("b")||0); else sta
 function startHost(){
   $("#host").classList.remove("hide");
   let Q=LS.get("bq_questions",null);
-  if(!Array.isArray(Q)||JSON.stringify(Q)===JSON.stringify(SAMPLE))Q=JSON.parse(JSON.stringify(DEFAULT_Q)); // 처음이거나 예전 예시 문제 그대로면 기말고사 100문제로
+  if(!Array.isArray(Q)||JSON.stringify(Q)===JSON.stringify(SAMPLE)||(Q.length===100&&Q.every(q=>q.type==="short")&&norm(Q[0].text)===norm(DEFAULT_Q[0].text))){Q=JSON.parse(JSON.stringify(DEFAULT_Q));LS.set("bq_questions",Q)} // 예전 예시·주관식판 기본 문제는 객관식판으로 // 처음이거나 예전 예시 문제 그대로면 기말고사 100문제로
   let G=LS.get("bq_game",null);if(!G||!G.members)G=fresh();
   let back="home", tab="home", client=null, online=false, devices={}, lastOnlineKey="", resetArmed=0, editing=-1;
   function fresh(){return {room:rid(5),b:-1,phase:"lobby",qi:-1,qid:0,startAt:0,dur:20,cur:null,answers:{},members:{},done:0}}
@@ -421,7 +424,7 @@ function startHost(){
   function optsHtml(q,reveal){
     if(q.type==="short")return reveal?`<div class="answer-big">정답 · ${esc(answerText(q))}</div>`:`<div class="shortnote">휴대폰에 답을 직접 입력해 주세요</div>`;
     const items=q.type==="ox"?["O","X"]:q.choices;
-    return `<div class="opts">`+items.map((c,i)=>{
+    return `<div class="opts ${items.some(c=>String(c).length>14)?"long":""}">`+items.map((c,i)=>{
       const val=q.type==="ox"?c:i, right=val===q.answer;
       const cnt=reveal?Object.values(G.answers).filter(a=>a.a===val).length:null;
       return `<div class="opt c${q.type==="ox"?(i?0:1):i} ${reveal?(right?"right":"dim"):""}"><span class="sh">${q.type==="ox"?"":SHAPES[i]}</span><span>${esc(c)}</span>${reveal?`<span class="cnt">${cnt}명</span>`:""}</div>`;
@@ -455,7 +458,7 @@ function startHost(){
     $("#stage").innerHTML=`<div class="lobby">${joinHtml()}<div class="menu"><h2>메인 메뉴</h2><div class="mgrid">`+
       item("mPlay","go",started?(fin?"최종 순위 보기":"대회 이어서 진행"):"대회 진행",started?(fin?"모든 문제가 끝났습니다":`${G.qi+1}번 문제까지 진행했습니다 · 전체 ${Q.length}문제`):"전도회 접속 현황을 보고 1번 문제를 시작합니다")+
       item("mFile","file","파일로 문제 올리기","한글 · 워드 · PDF · 엑셀 · CSV · 메모장 · 파워포인트 파일을 고르거나 이 화면에 끌어다 놓으세요. 시험지와 답지를 함께 골라도 됩니다")+
-      item("mMgr","",`문제 관리 (${Q.length}개)`,"문제를 고치거나 순서를 바꾸고, 엑셀로 내보냅니다")+
+      item("mMgr","",`문제 관리 (${Q.length}개)`,`문제를 고치거나 순서를 바꾸고, 엑셀로 내보냅니다 · 문항당 10점, 만점 ${Q.length*PTS}점`)+
       item("mRank","","현재 순위","남전도회 · 여전도회 평균 점수 순위를 봅니다")+
       item("mSum","","전도회별 누적 점수","전도회마다 지금까지 쌓인 점수 합계를 봅니다")+
       item("mQr","","QR 코드 크게 보기","늦게 온 분이 접속할 수 있도록 화면 가득 띄웁니다")+
@@ -505,7 +508,7 @@ function startHost(){
     }else{
       const fin=G.phase==="final";
       st.innerHTML=rankHtml(fin?"최종 순위":`${G.qi+1}번 문제까지의 순위`);
-      bar.innerHTML=`<span class="info">${fin?"모든 문제가 끝났습니다. 수고하셨습니다!":"순위 = 전도회 참여 인원의 평균 점수 (정답 10점 · 오답 0점)"}</span>`+
+      bar.innerHTML=`<span class="info">${fin?"모든 문제가 끝났습니다. 수고하셨습니다!":"점수 = 문항당 10점 (정답 10점 · 오답 0점) · 순위 = 전도회 참여 인원의 평균 점수"}</span>`+
         `<button class="btn warn sm" id="bReset">${resetArmed?"한 번 더 누르면 모든 점수가 지워집니다":"새 대회 시작"}</button><button class="btn ghost" id="bSum">누적 점수 보기</button>`+
         (fin?"":`<button class="btn" id="bNext">다음 문제</button>`);
       if(!fin)$("#bNext").onclick=()=>startQ(G.qi+1);
@@ -537,7 +540,7 @@ function startHost(){
   function renderMgr(){
     const tn={choice:"객관식",ox:"O/X",short:"주관식"};
     $("#stage").innerHTML=`<div class="mgr"><div class="tools"><p>문제는 이 컴퓨터의 브라우저에 저장됩니다. 한글 · 워드 · PDF · 엑셀 · CSV · 메모장 · 파워포인트 파일을 올리면 문제가 한꺼번에 만들어집니다. 화면에 파일을 끌어다 놓아도 됩니다.</p>
-      <button class="btn sm" id="qAdd">문제 추가</button><button class="btn sm" id="qFile">파일로 문제 올리기</button><a class="btn ghost sm" id="qTpl" href="template.xlsx" download>엑셀 양식 받기</a><button class="btn ghost sm" id="qExport">엑셀로 내보내기</button><button class="btn ghost sm" id="qSample">기말고사 100문제로 되돌리기</button></div>`+
+      <button class="btn sm" id="qAdd">문제 추가</button><button class="btn sm" id="qFile">파일로 문제 올리기</button><a class="btn ghost sm" id="qTpl" href="template.xlsx" download>엑셀 양식 받기</a><button class="btn ghost sm" id="qExport">엑셀로 내보내기</button><button class="btn ghost sm" id="qConv">주관식을 모두 객관식으로</button><button class="btn ghost sm" id="qSample">기말고사 100문제로 되돌리기</button></div>`+
       Q.map((q,i)=>`<div class="qi ${i===G.qi&&G.phase!=="lobby"?"cur":""}"><span class="no">${i+1}</span><div><div class="tx">${esc(q.text)}</div><div class="meta">${tn[q.type]} · 정답 ${esc(q.type==="short"?q.answers.join(" | "):answerText(q))} · ${q.time||20}초</div></div>
         <div class="acts"><button class="btn ghost sm" data-a="up" data-i="${i}" ${i?"":"disabled"} aria-label="위로">↑</button><button class="btn ghost sm" data-a="dn" data-i="${i}" ${i<Q.length-1?"":"disabled"} aria-label="아래로">↓</button><button class="btn ghost sm" data-a="ed" data-i="${i}">수정</button><button class="btn warn sm" data-a="rm" data-i="${i}">삭제</button></div></div>`).join("")+
       (Q.length?"":`<p class="hint">문제가 없습니다. 문제 추가를 눌러 주세요.</p>`)+`</div>`;
@@ -546,6 +549,8 @@ function startHost(){
     $("#qAdd").onclick=()=>openDlg(-1);
     $("#qFile").onclick=pickFiles;
     $("#qExport").onclick=exportQ;
+    $("#qConv").disabled=!Q.some(q=>q.type==="short");
+    $("#qConv").onclick=()=>{Q=Importer.toChoice(Q);saveQ();render()};
     $("#qSample").onclick=()=>{Q=JSON.parse(JSON.stringify(DEFAULT_Q));saveQ();render()};
     $("#stage").querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{
       const i=+b.dataset.i,a=b.dataset.a;
@@ -582,19 +587,26 @@ function startHost(){
   }
   async function importFiles(files){
     const tn={choice:"객관식",ox:"O/X",short:"주관식"};
-    $("#impSum").innerHTML=`<span class="spin"></span>파일 ${files.length}개를 읽는 중…`;
+    $("#impSum").innerHTML=`<span class="spin"></span>파일 ${files.length}개를 읽는 중…`;$("#impConvBox").classList.add("hide");
     $("#impList").innerHTML=files.map(f=>`<div>${esc(f.name)}</div>`).join("");$("#impList").classList.remove("hide");
     $("#impAdd").classList.add("hide");$("#impReplace").classList.add("hide");
     if(!$("#imp").open)$("#imp").showModal();
     const read=await Promise.all(files.map(readOne));
-    const res=Importer.parseFiles(read);
-    impQ=res.qs;const bad=res.bad;
+    impRes=Importer.parseFiles(read);showImp();
+  }
+  let impRes=null;
+  function showImp(){
+    const tn={choice:"객관식",ox:"O/X",short:"주관식"},res=impRes;
+    const conv=$("#impConv").checked;
+    impQ=conv?Importer.toChoice(res.qs,Q.flatMap(q=>q.type==="choice"?q.choices:q.type==="short"?q.answers.slice(0,1):[])):res.qs;const bad=res.bad;
+    $("#impConvBox").classList.toggle("hide",!res.qs.some(q=>q.type==="short"));
     $("#impSum").textContent=(impQ.length?`문제 ${impQ.length}개를 읽었습니다.`:"읽을 수 있는 문제가 없습니다.")+(bad.length?` 읽지 못한 ${bad.length}개는 빼고 올립니다.`:"")+(res.note?" "+res.note:"");
-    $("#impList").innerHTML=bad.map(q=>`<div class="e">✕ ${esc(q.text)}<small>${esc(q.err)}</small></div>`).join("")+impQ.map((q,i)=>`<div>${i+1}. ${esc(q.text)}<small>${tn[q.type]} · 정답 ${esc(q.type==="short"?q.answers.join(" | "):answerText(q))} · ${q.time}초</small></div>`).join("");
+    $("#impList").innerHTML=bad.map(q=>`<div class="e">✕ ${esc(q.text)}<small>${esc(q.err)}</small></div>`).join("")+impQ.map((q,i)=>`<div>${i+1}. ${esc(q.text)}<small>${tn[q.type]} · ${q.type==="choice"?"보기 "+esc(q.choices.join(" / "))+" · ":""}정답 ${esc(q.type==="short"?q.answers.join(" | "):answerText(q))} · ${q.time}초</small></div>`).join("");
     $("#impList").classList.toggle("hide",!(bad.length+impQ.length));
     $("#impAdd").classList.toggle("hide",!impQ.length);$("#impReplace").classList.toggle("hide",!impQ.length);
   }
   $("#impCancel").onclick=()=>$("#imp").close();
+  $("#impConv").onchange=()=>{if(impRes)showImp()};
   $("#impAdd").onclick=()=>{Q=Q.concat(impQ);saveQ();$("#imp").close();render()};
   $("#impReplace").onclick=()=>{Q=impQ.slice();saveQ();$("#imp").close();render()};
   async function exportQ(){

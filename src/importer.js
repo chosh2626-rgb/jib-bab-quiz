@@ -208,6 +208,27 @@
     return { qs: out, bad, note };
   }
 
-  const api = { norm, gradeShort, makeQ, rowsToQ, parseLines, parseFiles, splitParts };
+  /* 주관식 → 객관식: 다른 문제들의 정답을 틀린 보기로 쓴다 (빈칸 수·글자 수가 비슷한 것 우선) */
+  function toChoice(qs, extraPool) {
+    const pool = [];
+    const add = a => { a = String(a || "").trim(); if (a && !pool.some(p => norm(p) === norm(a))) pool.push(a); };
+    qs.forEach(q => q.type === "short" ? add(q.answers[0]) : q.type === "choice" ? q.choices.forEach(add) : 0);
+    (extraPool || []).forEach(add);
+    let seed = 7;
+    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    return qs.map((q, i) => {
+      if (q.type !== "short") return q;
+      const ans = q.answers[0], np = splitParts(ans).length, len = ans.length;
+      const cand = pool.filter(p => !q.answers.some(a => norm(a) === norm(p)))
+        .map(p => ({ p, d: Math.abs(splitParts(p).length - np) * 10 + Math.abs(p.length - len) / Math.max(4, len) + rnd() * 0.8 }))
+        .sort((a, b) => a.d - b.d).slice(0, 3).map(o => o.p);
+      if (cand.length < 3) return q;
+      const pos = Math.floor(rnd() * 4), ch = cand.slice();
+      ch.splice(pos, 0, ans);
+      return { type: "choice", text: q.text.replace(/모두 쓰세요/g, "모두 바르게 쓴 것을 고르세요").replace(/쓰세요/g, "고르세요"), choices: ch, answer: pos, time: Math.max(20, Math.min(q.time || 20, 30)) };
+    });
+  }
+
+  const api = { norm, gradeShort, makeQ, rowsToQ, parseLines, parseFiles, splitParts, toChoice };
   if (typeof module === "object" && module.exports) module.exports = api; else root.Importer = api;
 })(typeof self !== "undefined" ? self : this);
