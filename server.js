@@ -36,7 +36,7 @@ function questionsToXlsx(qs) {
   for (const q of qs) {
     const c = q.type === 'choice' ? (q.choices || []) : [];
     const ans = q.type === 'choice' ? String((q.answer | 0) + 1) : q.type === 'ox' ? q.answer : (q.answers || []).join(' | ');
-    rows.push([String(q.text || ''), c[0] || '', c[1] || '', c[2] || '', c[3] || '', ans, q.time || 20]);
+    rows.push([String(q.text || ''), c[0] || '', c[1] || '', c[2] || '', c[3] || '', ans, q.time || 30]);
   }
   const ws = XLSX.utils.aoa_to_sheet(rows);
   ws['!cols'] = [{ wch: 60 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 24 }, { wch: 9 }];
@@ -44,10 +44,10 @@ function questionsToXlsx(qs) {
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 }
 const TEMPLATE = [
-  { type: 'choice', text: '(객관식 예) 신약성경은 모두 몇 권일까요?', choices: ['27권', '29권', '39권', '66권'], answer: 0, time: 20 },
-  { type: 'ox', text: '(O/X 예) 예수님의 열두 제자 중 마태는 세리였다.', answer: 'O', time: 15 },
+  { type: 'choice', text: '(객관식 예) 신약성경은 모두 몇 권일까요?', choices: ['27권', '29권', '39권', '66권'], answer: 0, time: 30 },
+  { type: 'ox', text: '(O/X 예) 예수님의 열두 제자 중 마태는 세리였다.', answer: 'O', time: 30 },
   { type: 'short', text: '(주관식 예) 예수님께서 태어나신 마을은?', answers: ['베들레헴'], time: 30 },
-  { type: 'short', text: '(빈칸 2개 예) “너희는 (     )을 찢지 말고 (     )을 찢고” (욜 2:13)', answers: ['옷, 마음'], time: 35 },
+  { type: 'short', text: '(빈칸 2개 예) “너희는 (     )을 찢지 말고 (     )을 찢고” (욜 2:13)', answers: ['옷, 마음'], time: 30 },
 ];
 const sendXlsx = (res, buf, filename) => {
   res.writeHead(200, { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

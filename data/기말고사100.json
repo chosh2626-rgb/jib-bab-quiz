@@ -9,7 +9,7 @@
    "율례, 규례"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -21,7 +21,7 @@
    "말라기, 요엘"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -33,7 +33,7 @@
    "감사"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -57,7 +57,7 @@
    "죽으면 죽으리이다"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -69,7 +69,7 @@
    "아각, 100규빗"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -81,7 +81,7 @@
    "은혜"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -93,7 +93,7 @@
    "진주"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -105,7 +105,7 @@
    "여호와를 경외하는 것"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -117,7 +117,7 @@
    "생각"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -129,7 +129,7 @@
    "지혜"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -141,7 +141,7 @@
    "신뢰"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -153,7 +153,7 @@
    "양 떼"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -165,7 +165,7 @@
    "번개"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -177,7 +177,7 @@
    "숯"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -189,7 +189,7 @@
    "메시아"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -201,7 +201,7 @@
    "죄악"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -213,7 +213,7 @@
    "돌판"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -225,7 +225,7 @@
    "구원"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -237,7 +237,7 @@
    "자비"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -249,7 +249,7 @@
    "과부"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -261,7 +261,7 @@
    "제사장"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -273,7 +273,7 @@
    "더러운"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -285,7 +285,7 @@
    "기도"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -321,7 +321,7 @@
    "믿음"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -345,7 +345,7 @@
    "옷, 마음"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -357,7 +357,7 @@
    "찬송"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -369,7 +369,7 @@
    "제사장"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -381,7 +381,7 @@
    "진리, 은혜"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -393,7 +393,7 @@
    "에돔"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -405,7 +405,7 @@
    "분노"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -417,7 +417,7 @@
    "심판"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -429,7 +429,7 @@
    "금식하는 자"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -441,7 +441,7 @@
    "베들레헴 에브라다"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -453,7 +453,7 @@
    "기뻐, 정직"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -465,7 +465,7 @@
    "산성, 순종하는"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -477,7 +477,7 @@
    "기다리지"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -489,7 +489,7 @@
    "믿음"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -501,7 +501,7 @@
    "무화과나무, 감람나무"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -513,7 +513,7 @@
    "안식의 날"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -525,7 +525,7 @@
    "노래, 사랑"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -537,7 +537,7 @@
    "행위"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -549,7 +549,7 @@
    "영광, 평강"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -561,7 +561,7 @@
    "이름"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -573,7 +573,7 @@
    "수레, 나귀"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -585,7 +585,7 @@
    "시험"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -597,7 +597,7 @@
    "구원의 뿔"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -609,7 +609,7 @@
    "그리스도, 원수"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -621,7 +621,7 @@
    "사랑"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -633,7 +633,7 @@
    "교회"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -645,7 +645,7 @@
    "증인"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -657,7 +657,7 @@
    "금식"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -669,7 +669,7 @@
    "본"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -681,7 +681,7 @@
    "요한"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -693,7 +693,7 @@
    "낮추, 십자가"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -717,7 +717,7 @@
    "영"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -729,7 +729,7 @@
    "독생자"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -741,7 +741,7 @@
    "사랑"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -753,7 +753,7 @@
    "베들레헴"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -765,7 +765,7 @@
    "마가, 누가"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -777,7 +777,7 @@
    "빌립보"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -789,7 +789,7 @@
    "사랑"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -801,7 +801,7 @@
    "허물"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -813,7 +813,7 @@
    "복"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -825,7 +825,7 @@
    "능력"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -837,7 +837,7 @@
    "은혜"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -849,7 +849,7 @@
    "나무 그릇"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -861,7 +861,7 @@
    "의인"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -873,7 +873,7 @@
    "내 은혜가 네게 족하도다"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -885,7 +885,7 @@
    "세례 요한"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -897,7 +897,7 @@
    "사망"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -921,7 +921,7 @@
    "선물"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -933,7 +933,7 @@
    "진실함"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -945,7 +945,7 @@
    "구원"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -957,7 +957,7 @@
    "사도 바울"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -969,7 +969,7 @@
    "감사"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -981,7 +981,7 @@
    "믿음"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -993,7 +993,7 @@
    "천사장 미가엘"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -1005,7 +1005,7 @@
    "소망"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -1017,7 +1017,7 @@
    "역사, 수고, 인내"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -1029,7 +1029,7 @@
    "사도들"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -1077,7 +1077,7 @@
    "천사"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -1101,7 +1101,7 @@
    "게으름"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -1113,7 +1113,7 @@
    "로이스, 유니게"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -1125,7 +1125,7 @@
    "능력"
   ],
   "answer": 2,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -1137,7 +1137,7 @@
    "멜리데 섬"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -1161,7 +1161,7 @@
    "오네시모"
   ],
   "answer": 3,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -1185,7 +1185,7 @@
    "몸, 영"
   ],
   "answer": 1,
-  "time": 20
+  "time": 30
  },
  {
   "type": "choice",
@@ -1197,6 +1197,6 @@
    "실상, 소망"
   ],
   "answer": 0,
-  "time": 20
+  "time": 30
  }
 ]

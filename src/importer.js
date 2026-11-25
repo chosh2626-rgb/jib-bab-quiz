@@ -33,11 +33,7 @@
   }
 
   /* ── 문제 한 개 만들기 ── */
-  const round5 = n => Math.round(n / 5) * 5;
-  function autoTime(type, ans) {
-    if (type !== "short") return 20;
-    return Math.min(90, Math.max(30, round5(30 + norm(ans).length * 1.2)));
-  }
+  const autoTime = () => 30; // 모든 문제 마감 30초
   function cleanText(t) {
     return String(t || "")
       .replace(/\(\s*\)/g, "\u0000").replace(/\s+/g, " ").replace(/\u0000/g, "(\u3000\u3000\u3000)")
@@ -49,7 +45,6 @@
     text = cleanText(text);
     if (!text) return null;
     const ans = String(ansRaw ?? "").trim();
-    const t = parseInt(timeRaw, 10);
     const keep = (slots || []).map((c, k) => ({ c: String(c ?? "").trim(), k })).filter(o => o.c);
     if (!ans) return { err: "정답이 없습니다", text };
     if (keep.length === 1) return { err: "보기가 1개뿐입니다", text };
@@ -65,7 +60,7 @@
     } else if (hint !== "빈칸" && hint !== "주관식" && /^(o|○|◯|맞다|참)$/i.test(ans)) q = { type: "ox", text, answer: "O" };
     else if (hint !== "빈칸" && hint !== "주관식" && /^(x|×|✕|틀리다|거짓)$/i.test(ans)) q = { type: "ox", text, answer: "X" };
     else q = { type: "short", text, answers: ans.split(/\s*(?:\||｜|\s또는\s)\s*/).map(x => x.trim()).filter(Boolean) };
-    q.time = t > 0 ? Math.min(300, Math.max(5, t)) : autoTime(q.type, ans);
+    q.time = autoTime(q.type, ans); // 파일에 적힌 시간과 관계없이 30초
     return q;
   }
 
@@ -183,7 +178,7 @@
         if (!Array.isArray(arr)) { bad.push({ text: f.name, err: "문제 목록을 찾을 수 없습니다" }); continue; }
         for (const q of arr) {
           const ok = q && typeof q.text === "string" && (q.type === "choice" ? Array.isArray(q.choices) && Number.isInteger(q.answer) : q.type === "ox" ? (q.answer === "O" || q.answer === "X") : q.type === "short" && Array.isArray(q.answers));
-          if (ok) out.push({ type: q.type, text: q.text, choices: q.choices, answer: q.answer, answers: q.answers, time: q.time || 20 });
+          if (ok) out.push({ type: q.type, text: q.text, choices: q.choices, answer: q.answer, answers: q.answers, time: 30 });
           else bad.push({ text: String(q && q.text || "?"), err: "형식이 맞지 않습니다" });
         }
         continue;
@@ -225,7 +220,7 @@
       if (cand.length < 3) return q;
       const pos = Math.floor(rnd() * 4), ch = cand.slice();
       ch.splice(pos, 0, ans);
-      return { type: "choice", text: q.text.replace(/모두 쓰세요/g, "모두 바르게 쓴 것을 고르세요").replace(/쓰세요/g, "고르세요"), choices: ch, answer: pos, time: Math.max(20, Math.min(q.time || 20, 30)) };
+      return { type: "choice", text: q.text.replace(/모두 쓰세요/g, "모두 바르게 쓴 것을 고르세요").replace(/쓰세요/g, "고르세요"), choices: ch, answer: pos, time: 30 };
     });
   }
 

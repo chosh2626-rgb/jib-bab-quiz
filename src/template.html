@@ -255,7 +255,7 @@ dialog.qrd{width:min(94vw,86vh);text-align:center}
     <div class="f hide" id="fOxBox"><label for="fOx">정답</label><select id="fOx"><option value="O">O (맞다)</option><option value="X">X (틀리다)</option></select></div>
     <div class="f hide" id="fShortBox"><label for="fShort">정답</label><input type="text" id="fShort" placeholder="예: 베들레헴">
       <span class="hint">빈칸이 여러 개면 쉼표로 이어 쓰세요(예: 율례, 규례 → 모두 써야 정답). 다른 답도 인정하려면 | 로 구분하세요(예: 바울 | 사울). 띄어쓰기는 무시하고 채점합니다.</span></div>
-    <div class="f"><label for="fTime">제한 시간 (초)</label><input type="number" id="fTime" min="5" max="300" value="20"></div>
+    <div class="f"><label for="fTime">제한 시간 (초)</label><input type="number" id="fTime" min="5" max="300" value="30"></div>
     <p class="hint" id="fErr" style="color:var(--bad);margin-bottom:10px"></p>
     <div class="dbtn"><button type="button" class="btn ghost sm" id="fCancel">취소</button><button type="submit" class="btn sm">저장</button></div>
   </form>
@@ -313,6 +313,7 @@ function startHost(){
   $("#host").classList.remove("hide");
   let Q=LS.get("bq_questions",null);
   if(!Array.isArray(Q)||JSON.stringify(Q)===JSON.stringify(SAMPLE)||(Q.length===100&&Q.every(q=>q.type==="short")&&norm(Q[0].text)===norm(DEFAULT_Q[0].text))){Q=JSON.parse(JSON.stringify(DEFAULT_Q));LS.set("bq_questions",Q)} // 예전 예시·주관식판 기본 문제는 객관식판으로 // 처음이거나 예전 예시 문제 그대로면 기말고사 100문제로
+  if(!LS.get("bq_time30",false)){Q.forEach(q=>q.time=30);LS.set("bq_questions",Q);LS.set("bq_time30",true)} // 모든 문제 마감 30초로 한 번 맞춤
   let G=LS.get("bq_game",null);if(!G||!G.members)G=fresh();
   let back="home", tab="home", client=null, online=false, devices={}, lastOnlineKey="", resetArmed=0, editing=-1;
   function fresh(){return {room:rid(5),b:-1,phase:"lobby",qi:-1,qid:0,startAt:0,dur:20,cur:null,answers:{},members:{},done:0}}
@@ -392,7 +393,7 @@ function startHost(){
   }
   function startQ(i){
     if(i>=Q.length)return;
-    G.qi=i;G.qid++;G.cur=JSON.parse(JSON.stringify(Q[i]));G.answers={};G.dur=G.cur.time||20;G.startAt=Date.now();G.phase="question";
+    G.qi=i;G.qid++;G.cur=JSON.parse(JSON.stringify(Q[i]));G.answers={};G.dur=G.cur.time||30;G.startAt=Date.now();G.phase="question";
     save();publish();render();
   }
   function closeQ(){
@@ -541,7 +542,7 @@ function startHost(){
     const tn={choice:"객관식",ox:"O/X",short:"주관식"};
     $("#stage").innerHTML=`<div class="mgr"><div class="tools"><p>문제는 이 컴퓨터의 브라우저에 저장됩니다. 한글 · 워드 · PDF · 엑셀 · CSV · 메모장 · 파워포인트 파일을 올리면 문제가 한꺼번에 만들어집니다. 화면에 파일을 끌어다 놓아도 됩니다.</p>
       <button class="btn sm" id="qAdd">문제 추가</button><button class="btn sm" id="qFile">파일로 문제 올리기</button><a class="btn ghost sm" id="qTpl" href="template.xlsx" download>엑셀 양식 받기</a><button class="btn ghost sm" id="qExport">엑셀로 내보내기</button><button class="btn ghost sm" id="qConv">주관식을 모두 객관식으로</button><button class="btn ghost sm" id="qSample">기말고사 100문제로 되돌리기</button></div>`+
-      Q.map((q,i)=>`<div class="qi ${i===G.qi&&G.phase!=="lobby"?"cur":""}"><span class="no">${i+1}</span><div><div class="tx">${esc(q.text)}</div><div class="meta">${tn[q.type]} · 정답 ${esc(q.type==="short"?q.answers.join(" | "):answerText(q))} · ${q.time||20}초</div></div>
+      Q.map((q,i)=>`<div class="qi ${i===G.qi&&G.phase!=="lobby"?"cur":""}"><span class="no">${i+1}</span><div><div class="tx">${esc(q.text)}</div><div class="meta">${tn[q.type]} · 정답 ${esc(q.type==="short"?q.answers.join(" | "):answerText(q))} · ${q.time||30}초</div></div>
         <div class="acts"><button class="btn ghost sm" data-a="up" data-i="${i}" ${i?"":"disabled"} aria-label="위로">↑</button><button class="btn ghost sm" data-a="dn" data-i="${i}" ${i<Q.length-1?"":"disabled"} aria-label="아래로">↓</button><button class="btn ghost sm" data-a="ed" data-i="${i}">수정</button><button class="btn warn sm" data-a="rm" data-i="${i}">삭제</button></div></div>`).join("")+
       (Q.length?"":`<p class="hint">문제가 없습니다. 문제 추가를 눌러 주세요.</p>`)+`</div>`;
     $("#bar").innerHTML=`<span class="info">문제 ${Q.length}개</span><button class="btn" id="bBack">대회 진행 화면으로</button>`;
@@ -563,9 +564,9 @@ function startHost(){
   }
   function typeBoxes(){const t=$("#fType").value;$("#fChoiceBox").classList.toggle("hide",t!=="choice");$("#fOxBox").classList.toggle("hide",t!=="ox");$("#fShortBox").classList.toggle("hide",t!=="short")}
   function openDlg(i){
-    editing=i;const q=i>=0?Q[i]:{type:"choice",text:"",choices:["","","",""],answer:0,time:20};
+    editing=i;const q=i>=0?Q[i]:{type:"choice",text:"",choices:["","","",""],answer:0,time:30};
     $("#dlgTitle").textContent=i>=0?(i+1)+"번 문제 수정":"문제 추가";
-    $("#fType").value=q.type;$("#fText").value=q.text;$("#fTime").value=q.time||20;$("#fErr").textContent="";
+    $("#fType").value=q.type;$("#fText").value=q.text;$("#fTime").value=q.time||30;$("#fErr").textContent="";
     for(let k=0;k<4;k++){$("#fC"+k).value=q.type==="choice"?(q.choices[k]||""):"";$("#fA"+k).checked=q.type==="choice"?q.answer===k:k===0}
     $("#fOx").value=q.type==="ox"?q.answer:"O";$("#fShort").value=q.type==="short"?q.answers.join(" | "):"";
     typeBoxes();$("#dlg").showModal();
@@ -628,7 +629,7 @@ function startHost(){
   $("#fCancel").onclick=()=>$("#dlg").close();
   $("#qform").onsubmit=ev=>{
     ev.preventDefault();
-    const type=$("#fType").value,text=$("#fText").value.trim(),time=Math.min(300,Math.max(5,+$("#fTime").value||20));
+    const type=$("#fType").value,text=$("#fText").value.trim(),time=Math.min(300,Math.max(5,+$("#fTime").value||30));
     const err=m=>{$("#fErr").textContent=m};
     if(!text)return err("문제를 입력해 주세요.");
     let q={type,text,time};
